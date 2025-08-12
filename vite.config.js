@@ -9,7 +9,7 @@ export default defineConfig(({ mode }) => {
       port: 3000,
       proxy: {
         '/api': {
-          target: 'http://app3-api.webnew.info.vn',
+          target: 'https://api.webnew.info.vn',
           changeOrigin: true,
         }
       }
