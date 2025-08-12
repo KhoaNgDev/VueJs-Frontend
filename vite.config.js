@@ -1,17 +1,22 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 
-export default defineConfig({
-  plugins: [vue()],
-  server: {
-    host: true,
-    port: 3000,
-    proxy: {
-      '/api': {
-        target: 'http://fullstack-backend:8000',
-        changeOrigin: true,
+export default defineConfig(({ mode }) => {
+  return {
+    plugins: [vue()],
+    server: mode === 'development' ? {
+      host: true,
+      port: 3000,
+      proxy: {
+        '/api': {
+          target: 'http://app3-api.webnew.info.vn',
+          changeOrigin: true,
+        }
       }
+    } : undefined,
+    build: {
+      outDir: 'dist',
+      emptyOutDir: true
     }
   }
 })
-
