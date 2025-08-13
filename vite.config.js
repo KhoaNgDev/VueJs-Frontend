@@ -3,7 +3,7 @@ import vue from '@vitejs/plugin-vue'
 
 export default defineConfig(({ mode }) => {
   return {
-    base: './', 
+    base: '/', 
     plugins: [vue()],
     server: mode === 'development' ? {
       host: true,
