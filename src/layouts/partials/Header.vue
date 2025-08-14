@@ -62,30 +62,18 @@
   </header>
 </template>
 <script setup>
-import { ref, onMounted } from "vue";
+import { computed } from "vue";
 import { useRouter } from "vue-router";
 import Swal from "sweetalert2";
-import axios from "axios";
-import { useAuthStore } from "../../stores/authStore"; 
+import { useAuthStore } from "../../stores/authStore";
 
 const router = useRouter();
 const authStore = useAuthStore();
-const user = ref(null);
-
-onMounted(() => {
-  const userData = localStorage.getItem("auth_user");
-  if (userData) {
-    const parsedUser = JSON.parse(userData);
-    user.value = JSON.parse(userData);
-    authStore.setUser(parsedUser);
-  }
-});
+const user = computed(() => authStore.user);
 
 function logout() {
-  localStorage.removeItem("auth_token");
-  localStorage.removeItem("auth_user");
-  delete axios.defaults.headers.common["Authorization"];
-  window.location.href = "/login";
+  authStore.logout();
+  router.push("/login");
 }
 
 async function handleSearchClick() {
@@ -99,7 +87,6 @@ async function handleSearchClick() {
       cancelButtonText: "Hủy",
       reverseButtons: true,
     });
-
     if (result.isConfirmed) {
       router.push("/login");
     }

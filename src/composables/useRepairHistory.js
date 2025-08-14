@@ -7,6 +7,8 @@ import {
   requestOtpForLookup,
   verifyOtpForLookup,
 } from "../services/repairService";
+import { computed } from "vue";
+import { useAuthStore } from "../stores/authStore"; // nếu có store
 
 export function useRepairHistory(
   phone,
@@ -22,14 +24,8 @@ export function useRepairHistory(
   const ratings = ref({});
   const canExport = ref(false);
 
-  const authUserId = (() => {
-    try {
-      const user = JSON.parse(localStorage.getItem("auth_user") || "{}");
-      return user?.id || null;
-    } catch {
-      return null;
-    }
-  })();
+  const authStore = useAuthStore();
+  const authUserId = computed(() => authStore.user?.id || null);
 
   const handleError = (error, fallbackMsg) => {
     const data = error?.response?.data;
@@ -139,17 +135,39 @@ export function useRepairHistory(
         phone: phone?.value || null,
         plate: plate?.value || null,
       });
+      console.log("authUserId:", authUserId.value);
+      console.log(
+        "authUserId.value type:",
+        typeof authUserId.value,
+        authUserId.value
+      );
+
+      data.forEach((vehicle) => {
+        vehicle.repairs.forEach((repair) => {
+          repair.user_id = repair.user_id || vehicle.user_id;
+          repair.canRate = Number(authUserId.value) === Number(repair.user_id);
+
+          if (repair.feedback) {
+            ratings.value[repair.id] = {
+              rating: repair.feedback.rating,
+              comment: repair.feedback.comment,
+            };
+          }
+
+          console.log(
+            "repair id:",
+            repair.id,
+            "user_id:",
+            repair.user_id,
+            "authUserId:",
+            authUserId.value,
+            "canRate:",
+            repair.canRate
+          );
+        });
+      });
 
       history.value = data;
-
-      data.forEach((item) => {
-        if (item.feedback) {
-          ratings.value[item.id] = {
-            rating: item.feedback.rating,
-            comment: item.feedback.comment,
-          };
-        }
-      });
     } catch (error) {
       handleError(error, "Không thể tra cứu lịch sử.");
     } finally {
@@ -159,6 +177,12 @@ export function useRepairHistory(
   };
 
   const updateFeedback = async (repairId, payload) => {
+    console.log(
+      "Submitting feedback for repairId:",
+      repairId,
+      "payload:",
+      payload
+    );
     if (!repairId || !payload || !payload.rating || payload.rating === 0) {
       Swal.fire("Thiếu thông tin", "Vui lòng điền đầy đủ đánh giá.", "warning");
       return;
@@ -185,6 +209,15 @@ export function useRepairHistory(
       if (!vehicle) return;
 
       const repair = vehicle.repairs.find((r) => r.id === repairId);
+      console.log("repair.canRate:", repair?.canRate);
+      if (!repair.canRate) {
+        Swal.fire(
+          "Không được phép",
+          "Bạn không có quyền đánh giá sửa chữa này.",
+          "warning"
+        );
+        return;
+      }
       repair.repair_feedbacks = [newFeedback];
 
       Swal.fire("Cảm ơn", "Đánh giá của bạn đã được ghi nhận.", "success");
@@ -192,43 +225,42 @@ export function useRepairHistory(
       handleError(error, "Không thể lưu đánh giá.");
     }
   };
-const deleteFeedback = async (feedbackId) => {
-  const confirm = await Swal.fire({
-    title: "Xoá đánh giá?",
-    text: "Bạn chắc chắn muốn xoá đánh giá này?",
-    icon: "warning",
-    showCancelButton: true,
-    confirmButtonText: "Xoá",
-    cancelButtonText: "Huỷ",
-  });
-
-  if (!confirm.isConfirmed) return;
-
-  try {
-    Swal.fire({
-      title: "Đang xoá phản hồi...",
-      allowOutsideClick: false,
-      didOpen: () => {
-        Swal.showLoading();
-      },
+  const deleteFeedback = async (feedbackId) => {
+    const confirm = await Swal.fire({
+      title: "Xoá đánh giá?",
+      text: "Bạn chắc chắn muốn xoá đánh giá này?",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Xoá",
+      cancelButtonText: "Huỷ",
     });
 
-    await removeFeedback(feedbackId);
+    if (!confirm.isConfirmed) return;
 
-    history.value.forEach((vehicle) => {
-      vehicle.repairs.forEach((repair) => {
-        repair.repair_feedbacks = repair.repair_feedbacks.filter(
-          (fb) => fb.id !== feedbackId
-        );
+    try {
+      Swal.fire({
+        title: "Đang xoá phản hồi...",
+        allowOutsideClick: false,
+        didOpen: () => {
+          Swal.showLoading();
+        },
       });
-    });
 
-    Swal.fire("Đã xoá", "Phản hồi đã được xoá.", "success");
-  } catch (error) {
-    handleError(error, "Không thể xoá phản hồi.");
-  }
-};
+      await removeFeedback(feedbackId);
 
+      history.value.forEach((vehicle) => {
+        vehicle.repairs.forEach((repair) => {
+          repair.repair_feedbacks = repair.repair_feedbacks.filter(
+            (fb) => fb.id !== feedbackId
+          );
+        });
+      });
+
+      Swal.fire("Đã xoá", "Phản hồi đã được xoá.", "success");
+    } catch (error) {
+      handleError(error, "Không thể xoá phản hồi.");
+    }
+  };
 
   return {
     history,

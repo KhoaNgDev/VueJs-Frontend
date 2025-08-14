@@ -32,10 +32,7 @@
         </div>
       </div>
 
-      <div
-        v-if="repair.user_id === authUserId"
-        class="d-flex justify-content-end gap-2 mt-2"
-      >
+      <div v-if="repair.canRate" class="d-flex justify-content-end gap-2 mt-2">
         <button
           type="button"
           class="btn btn-sm btn-outline-primary"
@@ -53,11 +50,7 @@
       </div>
     </div>
 
-    <div
-      v-if="
-        repair.repair_feedbacks.length === 0 && repair.user_id === authUserId
-      "
-    >
+    <div v-if="repair.repair_feedbacks.length === 0 && repair.canRate">
       <button
         type="button"
         class="btn btn-primary btn-sm mt-2"

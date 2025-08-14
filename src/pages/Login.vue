@@ -28,7 +28,6 @@
             type="text"
             class="form-control"
             placeholder="Nhập số điện thoại"
-            
           />
         </div>
 
@@ -47,7 +46,6 @@
             type="password"
             placeholder="Vui lòng nhập mật khẩu."
             class="form-control"
-            
           />
         </div>
 
@@ -59,7 +57,6 @@
               type="text"
               class="form-control"
               placeholder="Nhập mã OTP"
-              
             />
             <button
               type="button"
@@ -83,6 +80,7 @@
           <span v-else> Đăng nhập </span>
         </button>
       </form>
+
       <router-link to="/" class="btn btn-outline-secondary w-100 mt-2">
         Quay về trang chủ
       </router-link>
@@ -93,57 +91,42 @@
     </div>
   </div>
 </template>
-
 <script setup>
 import { ref } from "vue";
 import Swal from "sweetalert2";
 import axios from "axios";
-const phone = ref("");
-const loading = ref(false);
+import { useRouter } from "vue-router";
+import { useAuthStore } from "../stores/authStore";
 
+const authStore = useAuthStore();
+const router = useRouter();
+
+const phone = ref("");
 const password = ref("");
 const otp = ref("");
 const mode = ref("password");
 const errors = ref([]);
-const sendingOtp = ref(false);
-const countdown = ref(0);
-let timer = null;
-const formatPhone = () => {
-  phone.value = phone.value
-    .replace(/[^\d]/g, "")
-    .replace(/^0+/, "0")
-    .slice(0, 10);
-};
-
-const sendOtp = async () => {
-  if (!phone.value) {
-    Swal.fire("Thiếu thông tin", "Vui lòng nhập số điện thoại.", "warning");
-    return;
-  }
-  try {
-    sendingOtp.value = true;
-    await axios.post("/api/client/send-otp", { phone: phone.value });
-    Swal.fire("Thành công", "OTP đã được gửi qua email.", "success");
-
-    countdown.value = 60;
-    timer = setInterval(() => {
-      if (countdown.value > 0) countdown.value--;
-      else clearInterval(timer);
-    }, 1000);
-  } catch (e) {
-    Swal.fire(
-      "Lỗi",
-      e.response?.data?.message || "Không gửi được OTP.",
-      "error"
-    );
-  } finally {
-    sendingOtp.value = false;
-  }
-};
+const loading = ref(false);
 
 const handleLogin = async () => {
   errors.value = [];
   loading.value = true;
+
+  if (!phone.value) {
+    Swal.fire("Thiếu thông tin", "Vui lòng nhập số điện thoại.", "warning");
+    loading.value = false;
+    return;
+  }
+  if (mode.value === "password" && !password.value) {
+    Swal.fire("Thiếu thông tin", "Vui lòng nhập mật khẩu.", "warning");
+    loading.value = false;
+    return;
+  }
+  if (mode.value === "otp" && !otp.value) {
+    Swal.fire("Thiếu thông tin", "Vui lòng nhập mã OTP.", "warning");
+    loading.value = false;
+    return;
+  }
 
   try {
     const payload = {
@@ -154,13 +137,16 @@ const handleLogin = async () => {
     };
 
     const { data } = await axios.post("/api/client/login", payload);
-    localStorage.setItem("auth_token", data.token);
-    localStorage.setItem("auth_user", JSON.stringify(data.user));
-    axios.defaults.headers.common["Authorization"] = `Bearer ${data.token}`;
 
-    Swal.fire("Thành công", "Đăng nhập thành công", "success").then(() => {
-      window.location.href = "/search";
-    });
+    if (data?.token && data?.user) {
+      authStore.setToken(data.token);
+      authStore.setUser(data.user);
+      Swal.fire("Thành công", "Đăng nhập thành công", "success").then(() => {
+        router.push("/search"); // SPA redirect
+      });
+    } else {
+      Swal.fire("Lỗi", "Dữ liệu trả về không hợp lệ", "error");
+    }
   } catch (e) {
     if (e.response?.data?.errors) {
       errors.value = Object.values(e.response.data.errors).flat();
