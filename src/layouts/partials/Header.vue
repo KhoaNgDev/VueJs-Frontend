@@ -39,7 +39,10 @@
                 <i class="fas fa-user-circle me-1"></i> {{ user.name }}
               </li>
               <li class="nav-item">
-                <button class="btn btn-sm btn-outline-light" @click="logout">
+                <button
+                  class="btn btn-sm btn-outline-light"
+                  @click="handleLogout"
+                >
                   <i class="fas fa-sign-out-alt me-1"></i> Đăng xuất
                 </button>
               </li>
@@ -71,10 +74,21 @@ const router = useRouter();
 const authStore = useAuthStore();
 const user = computed(() => authStore.user);
 
-function logout() {
-  authStore.logout();
-  router.push("/login");
-}
+const handleLogout = async () => {
+  const confirm = await Swal.fire({
+    title: "Đăng xuất?",
+    text: "Bạn có chắc chắn muốn đăng xuất không?",
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonText: "Đăng xuất",
+    cancelButtonText: "Huỷ",
+  });
+
+  if (confirm.isConfirmed) {
+    authStore.logout();
+    router.push("/login");
+  }
+};
 
 async function handleSearchClick() {
   if (!authStore.isAuthenticated) {
